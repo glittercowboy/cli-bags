@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { PublicKey } from '@solana/web3.js';
-import { getSDK } from '../sdk/client.js';
+import { getSDK, getRawClient } from '../sdk/client.js';
 import { t } from '../output/theme.js';
-import { table, jsonOut } from '../output/format.js';
+import { table, kv, jsonOut } from '../output/format.js';
 import { spin, succeed } from '../output/spinner.js';
 import { withErrorHandler } from '../utils/error.js';
 import { lamportsToSol, shortenAddress } from '../utils/solana.js';
@@ -77,6 +77,89 @@ poolCommand
             keys[i]?.toBase58() ?? t.dim('none'),
           ]),
         ),
+      );
+    }),
+  );
+
+poolCommand
+  .command('list')
+  .description('List all Bags pools')
+  .option('--migrated', 'Only show pools migrated to DAMM v2')
+  .action(
+    withErrorHandler(async (opts, cmd) => {
+      const isJson = cmd.optsWithGlobals().json;
+      const client = getRawClient();
+
+      spin('Fetching pools...');
+      const pools = await client.get<
+        Array<{
+          tokenMint: string;
+          dbcConfigKey: string;
+          dbcPoolKey: string;
+          dammV2PoolKey: string | null;
+        }>
+      >('/solana/bags/pools', {
+        params: { onlyMigrated: opts.migrated ?? false },
+      });
+      succeed();
+
+      if (isJson) {
+        jsonOut(pools);
+        return;
+      }
+
+      if (pools.length === 0) {
+        console.log(t.dim('No pools found.'));
+        return;
+      }
+
+      console.log(
+        table(
+          ['Token Mint', 'DBC Pool', 'DAMM v2 Pool', 'Migrated'],
+          pools.map((p) => [
+            shortenAddress(p.tokenMint),
+            shortenAddress(p.dbcPoolKey),
+            p.dammV2PoolKey ? shortenAddress(p.dammV2PoolKey) : '-',
+            p.dammV2PoolKey ? 'Yes' : 'No',
+          ]),
+        ),
+      );
+      console.log(t.dim(`\n${pools.length} pool(s) total`));
+    }),
+  );
+
+poolCommand
+  .command('info')
+  .description('Get pool info for a specific token')
+  .requiredOption('--mint <address>', 'Token mint address')
+  .action(
+    withErrorHandler(async (opts, cmd) => {
+      const isJson = cmd.optsWithGlobals().json;
+      const client = getRawClient();
+
+      spin('Fetching pool info...');
+      const pool = await client.get<{
+        tokenMint: string;
+        dbcConfigKey: string;
+        dbcPoolKey: string;
+        dammV2PoolKey: string | null;
+      }>('/solana/bags/pools/token-mint', {
+        params: { tokenMint: opts.mint },
+      });
+      succeed();
+
+      if (isJson) {
+        jsonOut(pool);
+        return;
+      }
+
+      console.log(
+        kv([
+          ['Token Mint', pool.tokenMint],
+          ['DBC Config Key', pool.dbcConfigKey],
+          ['DBC Pool Key', pool.dbcPoolKey],
+          ['DAMM v2 Pool Key', pool.dammV2PoolKey ?? 'not migrated'],
+        ]),
       );
     }),
   );

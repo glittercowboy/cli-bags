@@ -13,6 +13,7 @@ import { dexCommand } from './commands/dex.js';
 import { authCommand } from './commands/auth.js';
 import { keysCommand } from './commands/keys.js';
 import { walletCommand } from './commands/wallet.js';
+import { incorporateCommand } from './commands/incorporate.js';
 
 export function createProgram(): Command {
   const program = new Command('bags')
@@ -41,6 +42,7 @@ export function createProgram(): Command {
   program.addCommand(authCommand);
   program.addCommand(keysCommand);
   program.addCommand(walletCommand);
+  program.addCommand(incorporateCommand);
 
   return program;
 }

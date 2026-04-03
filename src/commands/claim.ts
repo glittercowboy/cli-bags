@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { PublicKey } from '@solana/web3.js';
-import { getSDK, getRawClient } from '../sdk/client.js';
+import { getSDK, getRawClient, getConnection } from '../sdk/client.js';
 import { t } from '../output/theme.js';
 import { table, jsonOut, kv } from '../output/format.js';
 import { spin, succeed } from '../output/spinner.js';
@@ -106,16 +106,34 @@ claimCommand
   .requiredOption('--mint <address>', 'Token mint address')
   .option('--limit <n>', 'Number of events', '50')
   .option('--offset <n>', 'Offset for pagination', '0')
+  .option('--from <timestamp>', 'Start unix timestamp (time-range mode)')
+  .option('--to <timestamp>', 'End unix timestamp (time-range mode)')
   .action(
     withErrorHandler(async (opts, cmd) => {
       const isJson = cmd.optsWithGlobals().json;
-      const sdk = getSDK();
 
-      spin('Fetching claim events...');
-      const events = await sdk.state.getTokenClaimEvents(
-        new PublicKey(opts.mint),
-        { limit: parseInt(opts.limit), offset: parseInt(opts.offset) },
-      );
+      let events: Array<{ wallet: string; isCreator: boolean; amount: string; signature: string; timestamp: number }>;
+
+      if (opts.from || opts.to) {
+        const client = getRawClient();
+        spin('Fetching claim events (time-range)...');
+        const result = await client.get<{ events: typeof events }>('/fee-share/token/claim-events', {
+          params: {
+            tokenMint: opts.mint,
+            mode: 'time',
+            from: opts.from ? parseInt(opts.from) : undefined,
+            to: opts.to ? parseInt(opts.to) : undefined,
+          },
+        });
+        events = result.events;
+      } else {
+        const sdk = getSDK();
+        spin('Fetching claim events...');
+        events = await sdk.state.getTokenClaimEvents(
+          new PublicKey(opts.mint),
+          { limit: parseInt(opts.limit), offset: parseInt(opts.offset) },
+        );
+      }
       succeed();
 
       if (isJson) {

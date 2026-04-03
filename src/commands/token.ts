@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { readFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
-import { getSDK } from '../sdk/client.js';
+import { getSDK, getRawClient } from '../sdk/client.js';
 import { t } from '../output/theme.js';
 import { table, kv, jsonOut } from '../output/format.js';
 import { spin, succeed } from '../output/spinner.js';
@@ -351,5 +351,56 @@ tokenCommand
           ]),
         );
       }
+    }),
+  );
+
+tokenCommand
+  .command('feed')
+  .description('Browse recent and active token launches')
+  .action(
+    withErrorHandler(async (_, cmd) => {
+      const isJson = cmd.optsWithGlobals().json;
+      const client = getRawClient();
+
+      spin('Fetching token feed...');
+      const feed = await client.get<
+        Array<{
+          name: string;
+          symbol: string;
+          description: string;
+          image: string;
+          tokenMint: string;
+          status: string;
+          twitter: string | null;
+          website: string | null;
+          launchSignature: string | null;
+          dbcPoolKey: string | null;
+          dbcConfigKey: string | null;
+        }>
+      >('/token-launch/feed');
+      succeed();
+
+      if (isJson) {
+        jsonOut(feed);
+        return;
+      }
+
+      if (feed.length === 0) {
+        console.log(t.dim('No token launches found.'));
+        return;
+      }
+
+      console.log(
+        table(
+          ['Name', 'Symbol', 'Mint', 'Status', 'Twitter'],
+          feed.map((item) => [
+            item.name,
+            item.symbol,
+            shortenAddress(item.tokenMint),
+            item.status,
+            item.twitter ?? '-',
+          ]),
+        ),
+      );
     }),
   );
