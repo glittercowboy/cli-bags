@@ -2,6 +2,8 @@
 
 CLI for the [Bags.fm](https://bags.fm) API. Launch tokens, swap, claim fees, manage wallets — all from your terminal.
 
+Built for use by AI coding agents (Claude Code, etc.) via the included [Claude Code Skill](#agent-skill), or by humans directly.
+
 ## Install
 
 ```bash
@@ -27,6 +29,26 @@ You'll be prompted for:
 - **Private key** — base58 Solana keypair (needed for signing transactions)
 
 Config is stored at `~/.bags/config.json` with `0600` permissions.
+
+## Agent Skill
+
+This repo includes a [Claude Code Skill](https://docs.anthropic.com/en/docs/claude-code/skills) at `SKILL/bags-fm/SKILL.md` that teaches AI agents how to operate the CLI.
+
+**What the skill provides:**
+- Complete command reference with every flag and option
+- Domain knowledge (how Bags.fm works, token lifecycle, fee sharing mechanics)
+- Common workflows (buy, sell, launch, claim fees)
+- Safety rules (dry-run first, check balances, confirm before spending)
+- Unit conversions (SOL to lamports)
+- Known quirks and troubleshooting
+
+**To use with Claude Code**, copy the skill into your Claude Code skills directory:
+
+```bash
+cp -r SKILL/bags-fm ~/.claude/skills/bags-fm
+```
+
+Then any Claude Code session can operate the Bags CLI autonomously — "launch a token", "buy 0.1 SOL of GSD", "claim my fees", etc.
 
 ## Commands
 
